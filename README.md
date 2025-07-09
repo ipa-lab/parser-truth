@@ -1,5 +1,9 @@
 # Ad-Hoc Parser Truth
 
+## Requirements
+
+Minimum Python Version 3.10
+
 ## Dataset Population Script (SQLite)
 
 ### Run Commands
