@@ -87,36 +87,44 @@ def get_project_file_hierarchy(table, selectedRow):
         method_slices = {}
         for methods in file_methods.values():
             for method in methods:
-                slices_query = db.select(slice_table.c.id, slice_table.c.path, slice_table.c.method_id).where(slice_table.c.method_id == method.id)
+                slices_query = db.select(slice_table.c.id, slice_table.c.path, slice_table.c.method_id, slice_table.c.code).where(slice_table.c.method_id == method.id)
                 slices = conn.execute(slices_query).fetchall()
                 method_slices[method.id] = slices
 
         return (selectedProject, files, file_methods, method_slices)
 
 
-def get_code(selectedTable, selectedRow):
-    if selectedTable == 'Slice':
-        with open(selectedRow.path, 'r') as file:
+def get_metadata_for_selection(resultTableName, selectedRow):
+    (project, file, method, slice) = ([], [], [], [])
+    
+    engine = db.create_engine(DB_CONNECTION_URL)
+    metadata = db.MetaData()
+    # load & set project metadata
+
+    if resultTableName == 'Slice':
+        print(selectedRow)
+
+
+    return (project, file, method, slice)
+
+
+def get_code_for_method(selectedRow):
+    engine = db.create_engine(DB_CONNECTION_URL)
+    metadata = db.MetaData()
+
+    slice_table = db.Table('Slice', metadata, autoload_with=engine)
+
+    with engine.connect() as conn:
+        slices_query = db.select(slice_table.c.path).where(slice_table.c.method_id == selectedRow.id)
+        slice = conn.execute(slices_query).first()
+
+        dir_path, filename = os.path.split(slice.path)
+
+        method_path = os.path.join(dir_path, "original_methods", filename)
+
+        with open(method_path, 'r') as file:
             resultCode = file.read()
-    elif selectedTable == 'Method':
-        engine = db.create_engine(DB_CONNECTION_URL)
-        metadata = db.MetaData()
-
-        slice_table = db.Table('Slice', metadata, autoload_with=engine)
-
-        with engine.connect() as conn:
-            slices_query = db.select(slice_table.c.path).where(slice_table.c.method_id == selectedRow.id)
-            slice = conn.execute(slices_query).first()
-
-            dir_path, filename = os.path.split(slice.path)
-
-            method_path = os.path.join(dir_path, "original_methods", filename)
-
-            with open(method_path, 'r') as file:
-                resultCode = file.read()
-    else: 
-        resultCode = ''' '''
-
+    
     return resultCode
 
 

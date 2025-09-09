@@ -5,7 +5,7 @@ sys.path.append('..')
 sys.path.append('../dataset_population')
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 
-from dataset_population.db_utils import get_code, get_project_file_hierarchy, run_sql_query
+from dataset_population.db_utils import get_code_for_method, get_metadata_for_selection, get_project_file_hierarchy, run_sql_query
 
 st.set_page_config(layout="wide")
 
@@ -18,10 +18,10 @@ if 'selected_code_item' not in st.session_state:
     st.session_state.selected_code_item = None
 
 if 'code' not in st.session_state:
-    st.session_state.code = None
+    st.session_state.code = ''
 
 if 'details_metadata' not in st.session_state:
-    st.session_state.details_metadata = None
+    st.session_state.details_metadata = ([], [], [], [])
 
 ## left column ##
 with search:
@@ -57,10 +57,16 @@ with search:
         tableSelectionEvent = st.dataframe(resultRows, selection_mode="single-row", on_select="rerun", hide_index=True)
 
         if len(tableSelectionEvent.selection.rows) > 0:
-            # TODO laod metadata
-            # st.session_state.details_metadata = True
             selectedTableRow = resultRows[tableSelectionEvent.selection.rows[0]]
-            st.session_state.code = get_code(resultTableName, selectedTableRow)
+
+            st.session_state.details_metadata = get_metadata_for_selection(resultTableName, selectedTableRow)
+
+            if resultTableName == 'Slice':
+                st.session_state.code = selectedTableRow.code
+            elif resultTableName == 'Method':
+                st.session_state.code = get_code_for_method(selectedTableRow)
+            else:
+                st.session_state.code = ''
 
     st.divider()
 
@@ -89,8 +95,8 @@ with search:
                             ):
                                 # st.session_state.selected_code_item = 'method_{}'.format(method.id)
                                 selectedTableRow = selectedProject
-                                st.session_state.code = get_code('Method', method)
-                                # TODO load metadata/details
+                                st.session_state.code = get_code_for_method(method)
+                                st.session_state.details_metadata = get_metadata_for_selection('Method', method)
                             
                             if method.id in method_slices:
                                 for slice in method_slices[method.id]:
@@ -103,8 +109,8 @@ with search:
                                     ):
                                         # st.session_state.selected_code_item = 'slice_{}'.format(slice.id)
                                         selectedTableRow = selectedProject
-                                        st.session_state.code = get_code('Slice', slice)
-                                        # TODO load metadata/details
+                                        st.session_state.code = slice.code
+                                        st.session_state.details_metadata = get_metadata_for_selection('Slice', method)
 
 
 ## center ##
@@ -117,18 +123,30 @@ with code:
 
 ## right column ##
 with details:
+    project, file, method, slice = st.session_state.details_metadata
     st.subheader('Details', divider="rainbow")
-    if st.session_state.details_metadata:
-        st.markdown('#### Project')
 
+    if not (project and file and method and slice):
+        st.text('Details about your selection will show up here.')
+    
+    if project:
+        st.markdown('##### Project')
+        st.dataframe()
+
+    if file:
         st.divider()
+        st.markdown('##### File')
+        st.dataframe()
 
-        st.markdown('#### File')
-
+    if method:
         st.divider()
+        st.markdown('##### Method')
+        st.dataframe()
 
-        st.markdown('#### Method')
-
+    if slice:
         st.divider()
+        st.markdown('##### Slice')
+        st.dataframe()
+    
 
-        st.markdown('#### Slice')
+    
