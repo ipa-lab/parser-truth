@@ -174,4 +174,4 @@ cython_debug/
 .pypirc
 
 
-./data/ParserExamples/
+data/ParserExamples/
