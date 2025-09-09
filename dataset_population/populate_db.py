@@ -1,3 +1,5 @@
+from datetime import date
+import os
 import time
 import pandas
 import sqlalchemy as db
@@ -6,8 +8,7 @@ import sys
 
 sys.path.append('../')
 
-from config import CSV_DATA_PATH, DB_CONNECTION_URL    
-print("In module products sys.path[0], __package__ ==", sys.path[0], __package__)
+from config import CSV_DATA_PATH, DB_PATH, DB_CONNECTION_URL, INITIAL_USER_NAME, INITIAL_USER_PW_HASH
 
 column_name_mappings = {
     'project': {
@@ -70,15 +71,11 @@ slice_metadata_fields = [
     'f_strings'
 ]
 
-df = pandas.read_csv(CSV_DATA_PATH)
-
-# df = df.head(10000)
-
-engine = db.create_engine(DB_CONNECTION_URL) # parameter echo=True for sqlalchemy logging
-
-metadata = db.MetaData()
 
 def create_tables():
+    engine = db.create_engine(DB_CONNECTION_URL) # parameter echo=True for sqlalchemy logging
+    metadata = db.MetaData()
+
     db.Table(
         'Project', metadata,
         db.Column('id', db.Integer, primary_key=True, autoincrement=True),
@@ -116,11 +113,18 @@ def create_tables():
         db.Column('method_id', db.Integer, db.ForeignKey('Method.id'))
     )
 
-    db.Table(
+    users = db.Table(
         'User', metadata,
         db.Column('id', db.Integer, primary_key=True, autoincrement=True),
         db.Column('name', db.String),
         db.Column('pw_hash', db.String)
+    )
+
+    db.Table(
+        'Dataset', metadata,
+        db.Column('id', db.Integer, primary_key=True, autoincrement=True),
+        db.Column('created_at', db.Date),
+        db.Column('user_id', db.Integer, db.ForeignKey('User.id'))
     )
 
     db.Table(
@@ -135,23 +139,52 @@ def create_tables():
         db.Column('add_date', db.Date)
     )
 
-
-    # Create all tables in the database
     metadata.create_all(engine)
+
+    with engine.connect() as conn:
+        stmt = db.insert(users).values(
+            name = INITIAL_USER_NAME,
+            pw_hash = INITIAL_USER_PW_HASH,
+        )
+        
+        conn.execute(stmt)
+        conn.commit()
 
 
 def insert_data_in_db():
-    with engine.begin() as connection:
+    engine = db.create_engine(DB_CONNECTION_URL) # parameter echo=True for sqlalchemy logging
+    metadata = db.MetaData()
+
+    if len(sys.argv) == 3:
+        df = pandas.read_csv(sys.argv[2])
+    else:
+        df = pandas.read_csv(CSV_DATA_PATH)
+
+    user = sys.argv[1]
+    user_table = db.Table('User', metadata, autoload_with=engine)
+    
+    with engine.begin() as conn:
+        
+        print(time.strftime('Start inserting data %H:%M:%S %d.%m.%Y', time.localtime()))
+
+        # dataset
+        user_query = db.select(user_table).where(user_table.c.name == user)
+        user = conn.execute(user_query).first()
+
+        if not user:
+            print('ERROR: User does not exist.')
+            sys.exit(1)
+    
+        pandas.DataFrame([{'user_id': user.id, 'created_at': date.today()}]) \
+            .to_sql('Dataset', conn, if_exists='append', index=False)
+
         # projects
         df[['project', 'project_statements']] \
             .drop_duplicates(subset=['project']) \
             .rename(columns=column_name_mappings['project']) \
-            .to_sql('Project', connection, if_exists='append', index=False)
+            .to_sql('Project', conn, if_exists='append', index=False)
 
-        project_ids = pandas.read_sql("SELECT id AS project_id, github_url AS project FROM Project", connection)
-
-        print('project IDs')
-        print(project_ids)
+        project_ids = pandas.read_sql("SELECT id AS project_id, github_url AS project FROM Project", conn)
 
         # files
         unique_files = df[['github_link', 'filename', 'loc', 'project']].drop_duplicates(subset=['github_link', 'filename'])
@@ -159,12 +192,9 @@ def insert_data_in_db():
         project_files = unique_files.merge(project_ids, on='project')
         project_files[['github_link', 'filename', 'loc', 'project_id']] \
             .rename(columns=column_name_mappings['file']) \
-            .to_sql('File', connection, if_exists='append', index=False)
+            .to_sql('File', conn, if_exists='append', index=False)
         
-        file_ids = pandas.read_sql("SELECT id AS file_id, name AS filename FROM File", connection)
-
-        print('file IDs')
-        print(file_ids)
+        file_ids = pandas.read_sql("SELECT id AS file_id, name AS filename FROM File", conn)
 
         # methods
         unique_methods = df[['method', 'method_hash', 'original_loc', 'method_node_count', 'filename']] \
@@ -173,40 +203,54 @@ def insert_data_in_db():
         file_methods = unique_methods.merge(file_ids, on='filename')
         file_methods[['method', 'method_hash', 'original_loc', 'method_node_count', 'file_id']] \
             .rename(columns=column_name_mappings['method']) \
-            .to_sql('Method', connection, if_exists='append', index=False)
+            .to_sql('Method', conn, if_exists='append', index=False)
         
-        method_ids = pandas.read_sql("SELECT Method.id AS method_id, Method.name AS method, File.name AS filename FROM Method JOIN File ON Method.file_id = File.id", connection)
-
-        print('method IDs \n', method_ids)
+        method_ids = pandas.read_sql("SELECT Method.id AS method_id, Method.name AS method, File.name AS filename FROM Method JOIN File ON Method.file_id = File.id", conn)
 
         # slices
         method_slices = df[slice_metadata_fields + ['method', 'file', 'filename']].merge(method_ids, on=['method', 'filename']) 
-
-        print(time.strftime("%H:%M:%S %d.%m.%Y", time.localtime()))
         
         method_slices['metadata'] = method_slices[slice_metadata_fields].to_dict('index')
 
-        print(method_slices['metadata'])
-
         method_slices.drop(columns= slice_metadata_fields + ['method', 'filename'], inplace=True)
 
+        def read_file_content(row):
+            try:
+                with open(row['file'], 'r') as file:
+                    return file.read()
+            except FileNotFoundError:
+                print(f"File not found: {row['file']}")
+                return None
+            except Exception as e:
+                print(f"Error reading file {row['file']}: {e}")
+                return None
+
+        # Apply the function to each row and update the 'code' column
+        method_slices['code'] = method_slices.apply(read_file_content, axis=1)
+        
         method_slices = method_slices.map(str)
 
         method_slices.rename(columns={'file': 'path'}) \
-            .to_sql('Slice', connection, if_exists='append', index=False)
+            .to_sql('Slice', conn, if_exists='append', index=False)
         
-        
-        print(time.strftime("%H:%M:%S %d.%m.%Y", time.localtime()))
-
-
-    # insert user ?
-    # user_df = df[['name', 'pw_hash']].drop_duplicates().reset_index(drop=True)
-    # user_df.to_sql('User', con=engine, if_exists='append', index=False)
-
-    # audit_df = df[['table', 'field', 'recordId', 'oldValue', 'newValue', 'addBy', 'addDate']].drop_duplicates().reset_index(drop=True)
+        print('Inserted all data at: ' + time.strftime("%H:%M:%S %d.%m.%Y", time.localtime()))
 
 
 if __name__ == '__main__':
-    # executed as script
-    create_tables()
+    if len(sys.argv) < 2:
+        print('ERROR: missing arguments')
+        print('Usage: python3 populate_db.py help | python3 populate_db.py <importedBy> <locationOfCSV>')
+        sys.exit(1)
+        
+    if sys.argv[1] == 'help':
+        print("Usage: python3 populate_db.py <importedBy> <locationOfCSV>")
+        print("<importedBy> required")
+        print("<locationOfCSV> optional, default '../data/analysis_results.csv'")
+        sys.exit(0)
+    
+    if os.path.exists(DB_PATH):
+        print(f"Database '{DB_PATH}' already exists. Continue with inserting data ...")
+    else:
+        create_tables()
+
     insert_data_in_db()
