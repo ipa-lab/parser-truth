@@ -1,22 +1,29 @@
 # Ad-Hoc Parser Truth
 
-==TODO: Description what is this App, mention Python, SQLite and Streamlit==
+A tool to analyze ad-hoc string parsers from python code snippets as part of the TYPES4STRINGS project.
+
+It consists of a dabatase population script and a web app.
+The population script takes a dataset of ad hoc parsers, consisting of a csv and a file structure of code snippets. As a result of this script a SQLite database is genereted/populated. For a detailed description refere to the [Populate DB](#prerequisites) section.
+
+The Streamlit web app visualizes the data and makes it searchable. The affiliation of projects to file and to the extracted code snippets is visualized in a tree like structure. Combined with the code and metadata information all at one glance. Further details on starting the web app can be found in the [Web App](#start-web-app) section.
+
+This tool can be seen as a first iteration. With further development it can be used for annotating these ad hoc parsers with ground truth, resulting in a benchmark dataset, that can be used for analyzing parsing programs.
 
 ![Streamlit UI](assets/streamlit.png "Streamlit UI")
 
 <details>
 <summary>Requirements</summary>
 
-## Python
+- Minimum Python Version `3.10`
 
-Minimum Python Version 3.10
 </details>
 
 <details>
 <summary>Populate DB</summary>
 
-## Assumptions
+## Prerequisites
 
+- set the initial user (a user that is saved in db that can add datasets to the db)
 - method code is the original code from dataset 'original_methods' folder, and slice code is the annotated code in the respective folders
 
 ## Dataset Population Script
@@ -24,7 +31,9 @@ Minimum Python Version 3.10
 - initial user erwähnen
 - Parameter beschreiben
 - wenn das populate script aufgerufen wird wo muss das csv liegen
-- wie soll das csv ausschauen
+  - wie soll das csv ausschauen
+- und wo müssen die code snippets liegen, die rein geladen werden (in der DB abgespeichert werden)
+  - wie soll der Ordner heißen und die Unterornder und wie sollen die Files benannt sein
 
 - nur wenn noch kein adhocparser.db file in data existiert werden Tabellen erstellt und initial User hinzugefügt
 
@@ -46,6 +55,9 @@ python3 ./populate_db.py
 
 </details>
 
+<details>
+<summary>Web App</summary>
+
 ## Start Web App
 
 ```bash
@@ -65,3 +77,5 @@ or
 ```bash
 python3 -m streamlit run app.py
 ```
+
+</details>
