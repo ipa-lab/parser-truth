@@ -174,4 +174,7 @@ cython_debug/
 .pypirc
 
 
-data/ParserExamples/
+data/ParserExamples/*
+
+data/analysis_results.csv
+data/adhocparser.db

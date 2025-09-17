@@ -155,10 +155,11 @@ def insert_data_in_db():
     engine = db.create_engine(DB_CONNECTION_URL) # parameter echo=True for sqlalchemy logging
     metadata = db.MetaData()
 
-    if len(sys.argv) == 3:
-        df = pandas.read_csv(sys.argv[2])
-    else:
+    try:
         df = pandas.read_csv(CSV_DATA_PATH)
+    except:
+        print(f"ERROR: File not found or another error occured with the CSV: {CSV_DATA_PATH}")
+        sys.exit(1)
 
     user = sys.argv[1]
     user_table = db.Table('User', metadata, autoload_with=engine)
@@ -237,15 +238,14 @@ def insert_data_in_db():
 
 
 if __name__ == '__main__':
-    if len(sys.argv) < 2:
+    if len(sys.argv) < 1:
         print('ERROR: missing arguments')
-        print('Usage: python3 populate_db.py help | python3 populate_db.py <importedBy> <locationOfCSV>')
+        print('Usage: python3 populate_db.py help | python3 populate_db.py <importedBy>')
         sys.exit(1)
         
     if sys.argv[1] == 'help':
-        print("Usage: python3 populate_db.py <importedBy> <locationOfCSV>")
-        print("<importedBy> required")
-        print("<locationOfCSV> optional, default '../data/analysis_results.csv'")
+        print("Usage: python3 populate_db.py <importedBy>")
+        print("<importedBy> required: username")
         sys.exit(0)
     
     if os.path.exists(DB_PATH):
