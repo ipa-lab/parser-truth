@@ -5,7 +5,7 @@ source .venv/bin/activate
 
 cd dataset_population/
 python3 -m pip install -r requirements.txt
-python3 ./populate_db.py $1
+python3 ./populate_db.py truthUser
 
 cd ../web-app/
 python3 -m pip install -r requirements.txt
