@@ -178,3 +178,5 @@ data/ParserExamples/*
 
 data/analysis_results.csv
 data/adhocparser.db
+
+config.py

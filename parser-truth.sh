@@ -1,0 +1,12 @@
+#!/bin/bash
+
+python3 -m venv .venv
+source .venv/bin/activate
+
+cd dataset_population/
+python3 -m pip install -r requirements.txt
+python3 ./populate_db.py $1
+
+cd ../web-app/
+python3 -m pip install -r requirements.txt
+streamlit run app.py

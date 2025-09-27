@@ -13,7 +13,7 @@ This tool can be seen as a first iteration. With further development, it can be 
 
 ## Requirements
 
-- Minimum Python Version `3.10`
+- Minimum Python version `3.10`
 
 ## Populate Database
 
@@ -30,6 +30,8 @@ An initial user must be set. This is a user who is saved in the database's `User
 - wie soll das csv ausschauen
   - mit einem Beispiel csv abgespeichert in data/example
 ==TODO== :warning:
+
+  - hier trotzdem in einer Tabelle alle Spalten aufzählen, beschreiben, welcher Daten Typ
 
 - The path for the code of the parser slices needs to be specified in the CSV in a column called `file`. (snippets from the original method as the annotated code)
 
@@ -84,6 +86,10 @@ streamlit run app.py
 # or
 python3 -m streamlit run app.py
 ```
+
+### Search
+
+explain search input field, what is allowed, what is searched ==TODO== :warning:
 
 ## Open Topics
 
