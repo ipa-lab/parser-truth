@@ -14,6 +14,7 @@ This tool can be seen as a first iteration. With further development, it can be 
 ## Requirements
 
 - Minimum Python version `3.10`
+- Minimum Caddy version `2.10.2`
 
 ## Populate Database
 

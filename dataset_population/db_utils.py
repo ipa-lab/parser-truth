@@ -24,7 +24,7 @@ def run_sql_query(searchTable, searchParam=None):
 
             return (searchTable, resultRows)
     
-    pattern = r"^([a-zA-Z_]+)\s?(=|LIKE|>|<|>=|<=|!=|<>)\s?(\S+|\d+)$"
+    pattern = r"^([a-zA-Z_]+)\s?(=|LIKE|>|<|>=|<=|!=|<>)\s?(\S+)$"
     match = re.match(pattern, searchParam.strip())
     
     if not match:
