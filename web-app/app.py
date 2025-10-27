@@ -5,7 +5,7 @@ sys.path.append('..')
 sys.path.append('../dataset_population')
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 
-from dataset_population.db_utils import get_code_for_method, get_metadata_for_selection, get_project_file_hierarchy, run_sql_query
+from dataset_population.db_utils import get_metadata_for_selection, get_project_file_hierarchy, run_sql_query
 
 st.set_page_config(layout="wide")
 
@@ -36,11 +36,11 @@ with search:
         searchParam = st.text_input("Put Your Search Paramaters here", label_visibility="collapsed", placeholder="Your Search Paramaters ...", icon="🔍", key="searchParam", max_chars=50)
     with helpCol:
         with st.popover('', icon="❔"):
-            # IDEA maybe do it with st.dialog instead
+            # IDEA: maybe do it with st.dialog instead
+            # IDEA: add picture of db table diagram
             st.write("One search statement.")
             st.write("For example: name LIKE %OCR%")
             st.write("possible operators: =, LIKE, >, <, >=, <=, <>, !=")
-            # TODO put picture of db table diagram
 
     if searchTable and not searchParam:
         (resultTableName, resultRows) = run_sql_query(searchTable)
@@ -61,10 +61,8 @@ with search:
 
             st.session_state.details_metadata = get_metadata_for_selection(resultTableName, selectedTableRow)
 
-            if resultTableName == 'Slice':
+            if resultTableName == 'Slice' or resultTableName == 'Method':
                 st.session_state.code = selectedTableRow.code
-            elif resultTableName == 'Method':
-                st.session_state.code = get_code_for_method(selectedTableRow)
             else:
                 st.session_state.code = ''
 
@@ -95,7 +93,7 @@ with search:
                             ):
                                 # st.session_state.selected_code_item = 'method_{}'.format(method.id)
                                 selectedTableRow = selectedProject
-                                st.session_state.code = get_code_for_method(method)
+                                st.session_state.code = method.code
                                 st.session_state.details_metadata = get_metadata_for_selection('Method', method)
                             
                             if method.id in method_slices:
@@ -110,7 +108,7 @@ with search:
                                         # st.session_state.selected_code_item = 'slice_{}'.format(slice.id)
                                         selectedTableRow = selectedProject
                                         st.session_state.code = slice.code
-                                        st.session_state.details_metadata = get_metadata_for_selection('Slice', method)
+                                        st.session_state.details_metadata = get_metadata_for_selection('Slice', slice)
 
 
 ## center ##
@@ -147,6 +145,3 @@ with details:
         st.divider()
         st.markdown('##### Slice')
         st.dataframe()
-    
-
-    

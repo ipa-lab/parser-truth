@@ -100,6 +100,7 @@ def create_tables():
         db.Column('statements', db.Integer),
         db.Column('boa_cfg_nodes', db.Integer),
         db.Column('loc', db.Numeric),
+        db.Column('code', db.String),
         db.Column('file_id', db.Integer, db.ForeignKey('File.id'))
     )
 
@@ -198,11 +199,29 @@ def insert_data_in_db():
         file_ids = pandas.read_sql("SELECT id AS file_id, name AS filename FROM File", conn)
 
         # methods
-        unique_methods = df[['method', 'method_hash', 'original_loc', 'method_node_count', 'filename']] \
-            .drop_duplicates() # todo probably also drop duplicates but on which field?
+        unique_methods = df[['method', 'method_hash', 'original_loc', 'method_node_count', 'file', 'filename']] \
+            .drop_duplicates()
 
         file_methods = unique_methods.merge(file_ids, on='filename')
-        file_methods[['method', 'method_hash', 'original_loc', 'method_node_count', 'file_id']] \
+
+        def read_method_code(row):
+            try:
+                dir_path, filename = os.path.split(slice.path)
+                method_path = os.path.join(dir_path, "original_methods", filename)
+
+                with open(method_path, 'r') as file:
+                    return file.read()
+            except FileNotFoundError:
+                print(f"File not found: {method_path}")
+                return None
+            except Exception as e:
+                print(f"Error reading file {method_path}: {e}")
+                return None
+
+        # Apply the function to each row and update the 'code' column
+        file_methods['code'] = file_methods.apply(read_method_code, axis=1)
+
+        file_methods[['method', 'method_hash', 'original_loc', 'method_node_count', 'code', 'file_id']] \
             .rename(columns=column_name_mappings['method']) \
             .to_sql('Method', conn, if_exists='append', index=False)
         
@@ -215,7 +234,7 @@ def insert_data_in_db():
 
         method_slices.drop(columns= slice_metadata_fields + ['method', 'filename'], inplace=True)
 
-        def read_file_content(row):
+        def read_slice_code(row):
             try:
                 with open(row['file'], 'r') as file:
                     return file.read()
@@ -227,7 +246,7 @@ def insert_data_in_db():
                 return None
 
         # Apply the function to each row and update the 'code' column
-        method_slices['code'] = method_slices.apply(read_file_content, axis=1)
+        method_slices['code'] = method_slices.apply(read_slice_code, axis=1)
         
         method_slices = method_slices.map(str)
 
